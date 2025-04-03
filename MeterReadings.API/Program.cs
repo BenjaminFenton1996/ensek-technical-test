@@ -31,7 +31,7 @@ namespace MeterReadings.API
             {
                 var services = scope.ServiceProvider;
                 var bootstrapper = services.GetRequiredService<DatabaseBootstrapper>();
-                await bootstrapper.RunBootstrapper();
+                await bootstrapper.RunBootstrapper(builder.Environment.IsDevelopment());
             }
 
             // Configure the HTTP request pipeline.

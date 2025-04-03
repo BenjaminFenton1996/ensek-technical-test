@@ -1,6 +1,6 @@
 ﻿namespace MeterReadings.Infrastructure.Repositories
 {
-    internal class IMeterReadingsRepository
+    public interface IMeterReadingsRepository
     {
     }
 }
