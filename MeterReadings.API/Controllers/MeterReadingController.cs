@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeterReadingsAPI.Controllers
+namespace MeterReadings.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
@@ -9,7 +9,7 @@ namespace MeterReadingsAPI.Controllers
         [HttpPost("meter-reading-uploads")]
         public ActionResult MeterReadingUploads()
         {
-            //TODO - Upload meter readings
+            //TODO - Implement this
             throw new NotImplementedException();
         }
     }
