@@ -8,10 +8,11 @@ namespace MeterReadings.Tests.UnitTests
     [TestFixture]
     internal class AccountsCSvRowParserTests
     {
-        [Test]
-        public async Task TestParsingValidRow()
+        [TestCase("AccountId,FirstName,LastName\r\n2344,Tommy,Test", 2344, "Tommy", "Test")]
+        [TestCase("AccountId,FirstName,LastName\r\n70112,Bob,Turk", 70112, "Bob", "Turk")]
+        [TestCase("AccountId,FirstName,LastName\r\n9,Jeremy,Karl", 9, "Jeremy", "Karl")]
+        public async Task TestParsingValidRow(string accountsCsv, int expectedId, string expectedFirstName, string expectedLastName)
         {
-            var accountsCsv = "AccountId,FirstName,LastName\r\n2344,Tommy,Test";
             using var accountsStream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
             using var streamReader = new StreamReader(accountsStream);
             using var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture);
@@ -20,7 +21,7 @@ namespace MeterReadings.Tests.UnitTests
             await csvReader.ReadAsync();
 
             var actualRow = AccountsCsvRowParser.ParseRow(csvReader);
-            var expectedRow = new AccountImportRow(2344, "Tommy", "Test");
+            var expectedRow = new AccountImportRow(expectedId, expectedFirstName, expectedLastName);
             Assert.Multiple(() =>
             {
                 Assert.That(actualRow, Is.Not.Null);
@@ -28,10 +29,11 @@ namespace MeterReadings.Tests.UnitTests
             });
         }
 
-        [Test]
-        public async Task TestParsingInvalidRow()
+        [TestCase("AccountId,FirstName,LastName\r\nBob,44,Test")]
+        [TestCase("AccountId,FirstName,LastName\r\n,44,Test")]
+        [TestCase("AccountId,FirstName,LastName\r\n,,")]
+        public async Task TestParsingInvalidRow(string accountsCsv)
         {
-            var accountsCsv = "AccountId,FirstName,LastName\r\nBob,44,Test";
             using var accountsStream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
             using var streamReader = new StreamReader(accountsStream);
             using var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture);
