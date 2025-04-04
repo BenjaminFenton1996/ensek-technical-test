@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace MeterReadings.Infrastructure.Import.Accounts
 {
-    internal class AccountsCsvHandler : ICsvHandler
+    public class AccountsCsvHandler : ICsvHandler
     {
         private readonly IAccountsRepository _accountsRepository;
         private readonly ILogger<AccountsCsvHandler> _logger;
@@ -32,43 +32,32 @@ namespace MeterReadings.Infrastructure.Import.Accounts
 
         public async Task<ImportResult> ImportAsync(CsvReader csv, CancellationToken cancellationToken = default)
         {
-            var successfulRows = 0;
-            var failedRows = 0;
-            var errors = new List<string>();
+            var (parsedRows, totalRows) = await CsvImportParser<AccountImportRow>.ReadCsvAsync(csv, AccountsCsvRowParser.ParseRow);
             var accounts = new List<Account>();
-
-            while (await csv.ReadAsync())
+            foreach (var row in parsedRows)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var (accountCsvRow, errorMessage) = AccountsCsvRowParser.ParseRow(csv);
-                if (errorMessage is not null)
-                {
-                    failedRows++;
-                    errors.Add(errorMessage);
-                    continue;
-                }
-                if (accountCsvRow is null)
-                {
-                    failedRows++;
-                    errors.Add("Account CSV row was null");
-                    continue;
-                }
-
                 var account = new Account
                 {
-                    AccountId = accountCsvRow.AccountId,
-                    FirstName = accountCsvRow.FirstName,
-                    LastName = accountCsvRow.LastName
+                    AccountId = row.AccountId,
+                    FirstName = row.FirstName,
+                    LastName = row.LastName
                 };
+
+                if (!EntityValidation.IsValid(account))
+                {
+                    _logger.LogWarning("Account row contained invalid data");
+                    continue;
+                }
+
                 accounts.Add(account);
-                successfulRows++;
             }
 
-            var totalRows = successfulRows + failedRows;
+            var successfulRows = accounts.Count;
+            var failedRows = totalRows - successfulRows;
             if (accounts.Count == 0)
             {
                 _logger.LogWarning("CSV contained no valid rows");
-                return new ImportResult(totalRows, 0, failedRows, [.. errors]);
+                return new ImportResult(0, totalRows);
             }
 
             try
@@ -78,10 +67,9 @@ namespace MeterReadings.Infrastructure.Import.Accounts
             catch (Exception dbEx)
             {
                 _logger.LogError(dbEx, "Database error during batch insert of accounts");
-                errors.Add($"Database error when inserting accounts: {dbEx.Message}");
-                return new ImportResult(totalRows, 0, totalRows, [.. errors]);
+                return new ImportResult(0, totalRows);
             }
-            return new ImportResult(totalRows, successfulRows, failedRows, [.. errors]);
+            return new ImportResult(successfulRows, failedRows);
         }
     }
 }

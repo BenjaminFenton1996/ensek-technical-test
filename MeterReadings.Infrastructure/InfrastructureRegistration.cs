@@ -15,8 +15,8 @@ namespace MeterReadings.Infrastructure
             services.AddDbContext<EnergyCompanyDbContext>(options => options.UseNpgsql(connectionString));
             services.AddScoped<IMeterReadingsRepository, MeterReadingsRepository>();
             services.AddScoped<IAccountsRepository, AccountsRepository>();
-            services.AddScoped<ICsvHandler, AccountsCsvHandler>();
-            services.AddScoped<ICsvHandler, MeterReadingsCsvHandler>();
+            services.AddScoped<AccountsCsvHandler>();
+            services.AddScoped<MeterReadingsCsvHandler>();
             services.AddScoped<CsvImporter>();
             services.AddScoped<DatabaseBootstrapper>();
         }

@@ -4,7 +4,7 @@ namespace MeterReadings.Infrastructure.Import.Accounts
 {
     internal static class AccountsCsvRowParser
     {
-        public static (AccountCsvRow? accountCsvRow, string? errorMessage) ParseRow(IReaderRow csvRow)
+        public static AccountImportRow? ParseRow(IReaderRow csvRow)
         {
             var isValidAccountId = int.TryParse(csvRow.GetField<string>(AccountCsvValidColumns.AccountIdHeader), out var accountId);
             var firstName = csvRow.GetField<string>(AccountCsvValidColumns.FirstNameHeader);
@@ -12,18 +12,18 @@ namespace MeterReadings.Infrastructure.Import.Accounts
 
             if (!isValidAccountId)
             {
-                return (null, "Account ID is invalid or missing");
+                return null;
             }
             else if (string.IsNullOrEmpty(firstName))
             {
-                return (null, "First name cannot be empty");
+                return null;
             }
             else if (string.IsNullOrEmpty(lastName))
             {
-                return (null, "Last name cannot be empty");
+                return null;
             }
 
-            return (new AccountCsvRow(accountId, firstName, lastName), null);
+            return new AccountImportRow(accountId, firstName, lastName);
         }
     }
 }

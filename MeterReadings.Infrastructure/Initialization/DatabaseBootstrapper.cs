@@ -1,4 +1,6 @@
 ﻿using MeterReadings.Infrastructure.Import;
+using MeterReadings.Infrastructure.Import.Accounts;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace MeterReadings.Infrastructure.Initialization
@@ -7,12 +9,14 @@ namespace MeterReadings.Infrastructure.Initialization
     {
         private readonly EnergyCompanyDbContext _context;
         private readonly CsvImporter _csvImporter;
+        private readonly AccountsCsvHandler _accountsCsvHandler;
         private readonly ILogger<DatabaseBootstrapper> _logger;
 
-        public DatabaseBootstrapper(EnergyCompanyDbContext context, CsvImporter csvImporter, ILogger<DatabaseBootstrapper> logger)
+        public DatabaseBootstrapper(EnergyCompanyDbContext context, CsvImporter csvImporter, AccountsCsvHandler accountsCsvHandler, ILogger<DatabaseBootstrapper> logger)
         {
             _context = context;
             _csvImporter = csvImporter;
+            _accountsCsvHandler = accountsCsvHandler;
             _logger = logger;
         }
 
@@ -30,7 +34,7 @@ namespace MeterReadings.Infrastructure.Initialization
                     try
                     {
                         using var csvFileStream = new FileStream(testAccountsPath, FileMode.Open, FileAccess.Read);
-                        await _csvImporter.ImportFromStreamAsync(csvFileStream, cancellationToken);
+                        await _csvImporter.ImportFromStreamAsync(csvFileStream, _accountsCsvHandler, cancellationToken);
                         _logger.LogInformation("Finished account seeding");
                     }
                     catch (Exception ex)
@@ -44,7 +48,15 @@ namespace MeterReadings.Infrastructure.Initialization
                 }
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "An error occurred when trying to save changes after bootstrapping the database");
+                throw;
+            }
         }
     }
 }

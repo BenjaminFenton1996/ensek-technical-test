@@ -1,10 +1,13 @@
 ﻿using MeterReadings.Infrastructure;
+using MeterReadings.Infrastructure.Exceptions;
 using MeterReadings.Infrastructure.Import;
 using MeterReadings.Infrastructure.Import.Accounts;
+using MeterReadings.Infrastructure.Import.MeterReadings;
 using MeterReadings.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Globalization;
 using System.Text;
 
 namespace MeterReadings.Tests.IntegrationTests
@@ -13,6 +16,8 @@ namespace MeterReadings.Tests.IntegrationTests
     internal class CsvImporterTests
     {
         private CsvImporter _csvImporter;
+        private AccountsCsvHandler _accountsCsvHandler;
+        private MeterReadingsCsvHandler _meterReadingsCsvHandler;
         private EnergyCompanyDbContext _context;
 
         [OneTimeSetUp]
@@ -28,11 +33,16 @@ namespace MeterReadings.Tests.IntegrationTests
             await _context.Database.EnsureCreatedAsync();
 
             var accountsRepository = new AccountsRepository(_context);
-            var accountsCsvHandlerLoggerMock = new Mock<ILogger<AccountsCsvHandler>>();
-            var accountsCsvHandler = new AccountsCsvHandler(accountsRepository, accountsCsvHandlerLoggerMock.Object);
-            var csvImporterLoggerMock = new Mock<ILogger<CsvImporter>>();
+            var meterReadingsRepository = new MeterReadingsRepository(_context);
 
-            _csvImporter = new CsvImporter([accountsCsvHandler], csvImporterLoggerMock.Object);
+            var accountsCsvHandlerLoggerMock = new Mock<ILogger<AccountsCsvHandler>>();
+            _accountsCsvHandler = new AccountsCsvHandler(accountsRepository, accountsCsvHandlerLoggerMock.Object);
+
+            var meterReadingsCsvHandlerLoggerMock = new Mock<ILogger<MeterReadingsCsvHandler>>();
+            _meterReadingsCsvHandler = new MeterReadingsCsvHandler(meterReadingsRepository, _context, meterReadingsCsvHandlerLoggerMock.Object);
+
+            var csvImporterLoggerMock = new Mock<ILogger<CsvImporter>>();
+            _csvImporter = new CsvImporter(csvImporterLoggerMock.Object);
         }
 
         [SetUp]
@@ -50,45 +60,54 @@ namespace MeterReadings.Tests.IntegrationTests
         }
 
         [Test]
-        public async Task TestValidAccountsImport()
+        public async Task TestValidImport()
         {
             var accountsCsv = "AccountId,FirstName,LastName\r\n2344,Tommy,Test\r\n2233,Barry,Test";
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
+            using var accountsStream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
 
-            var actualImportResults = await _csvImporter.ImportFromStreamAsync(stream);
-            var expectedImportResults = new ImportResult(2, 2, 0, []);
-            Assert.Multiple(() =>
-            {
-                Assert.That(actualImportResults, Is.EqualTo(expectedImportResults));
-            });
+            var actualImportAccountResults = await _csvImporter.ImportFromStreamAsync(accountsStream, _accountsCsvHandler);
+            var expectedImportAccountResults = new ImportResult(2, 0);
+            Assert.That(actualImportAccountResults, Is.EqualTo(expectedImportAccountResults));
 
             await _context.SaveChangesAsync();
             var accounts = _context.Accounts.ToArray();
-            var barryAccount = accounts.First(x => x.AccountId == 2233);
+            var expectedAccount = accounts.First(x => x.AccountId == 2233);
             Assert.Multiple(() =>
             {
                 Assert.That(accounts, Has.Length.EqualTo(2));
-                Assert.That(barryAccount.AccountId, Is.EqualTo(2233));
-                Assert.That(barryAccount.FirstName, Is.EqualTo("Barry"));
-                Assert.That(barryAccount.LastName, Is.EqualTo("Test"));
+                Assert.That(expectedAccount.AccountId, Is.EqualTo(2233));
+                Assert.That(expectedAccount.FirstName, Is.EqualTo("Barry"));
+                Assert.That(expectedAccount.LastName, Is.EqualTo("Test"));
+            });
+            await accountsStream.DisposeAsync();
+
+            var meterReadingsCsv = "AccountId,MeterReadingDateTime,MeterReadValue,\r\n2344,22/04/2019 09:24,1002,\r\n2233,22/04/2019 12:25,323,";
+            using var meterReadingsStream = new MemoryStream(Encoding.UTF8.GetBytes(meterReadingsCsv));
+            var actualImportMeterReadingsResults = await _csvImporter.ImportFromStreamAsync(meterReadingsStream, _meterReadingsCsvHandler);
+            var expectedImportMeterReadingsResults = new ImportResult(2, 0);
+            Assert.That(actualImportMeterReadingsResults, Is.EqualTo(expectedImportMeterReadingsResults));
+
+            await _context.SaveChangesAsync();
+            var meterReadings = _context.MeterReadings.ToArray();
+            var barryMeterReading = meterReadings.First(x => x.AccountId == 2233);
+            Assert.Multiple(() =>
+            {
+                Assert.That(meterReadings, Has.Length.EqualTo(2));
+                Assert.That(barryMeterReading.AccountId, Is.EqualTo(2233));
+                Assert.That(barryMeterReading.MeterReadingDateTime, Is.EqualTo(DateTimeOffset.ParseExact("22/04/2019 12:25", "dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None).UtcDateTime));
+                Assert.That(barryMeterReading.MeterReadValue, Is.EqualTo("00323"));
             });
         }
 
         [Test]
-        public async Task TestPartiallyValidAccountsImport()
+        public async Task TestPartiallyValidImport()
         {
             var accountsCsv = "AccountId,FirstName,LastName\r\n2344,Tommy,Test\r\n2233,,Test";
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
 
-            var actualImportResults = await _csvImporter.ImportFromStreamAsync(stream);
-            var expectedImportResults = new ImportResult(2, 1, 1, ["First name cannot be empty"]);
-            Assert.Multiple(() =>
-            {
-                Assert.That(actualImportResults.SuccessfulRows, Is.EqualTo(expectedImportResults.SuccessfulRows));
-                Assert.That(actualImportResults.FailedRows, Is.EqualTo(expectedImportResults.FailedRows));
-                Assert.That(actualImportResults.TotalRows, Is.EqualTo(expectedImportResults.TotalRows));
-                Assert.That(actualImportResults.Errors, Is.EquivalentTo(expectedImportResults.Errors));
-            });
+            var actualImportResults = await _csvImporter.ImportFromStreamAsync(stream, _accountsCsvHandler);
+            var expectedImportResults = new ImportResult(1, 1);
+            Assert.That(actualImportResults, Is.EqualTo(expectedImportResults));
 
             await _context.SaveChangesAsync();
             var accounts = _context.Accounts.ToArray();
@@ -106,14 +125,11 @@ namespace MeterReadings.Tests.IntegrationTests
         {
             var accountsCsv = "AccId,FName,LName\r\n2344,Tommy,Test\r\n2233,Barry,Test";
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(accountsCsv));
-            Assert.ThrowsAsync<NotSupportedException>(() => _csvImporter.ImportFromStreamAsync(stream));
+            Assert.ThrowsAsync<CsvHeaderException>(() => _csvImporter.ImportFromStreamAsync(stream, _accountsCsvHandler));
 
             await _context.SaveChangesAsync();
             var accounts = _context.Accounts.ToArray();
-            Assert.Multiple(() =>
-            {
-                Assert.That(accounts, Has.Length.EqualTo(0));
-            });
+            Assert.That(accounts, Has.Length.EqualTo(0));
         }
     }
 }

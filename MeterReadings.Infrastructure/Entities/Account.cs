@@ -1,12 +1,17 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace MeterReadings.Infrastructure.Entities
 {
     [PrimaryKey(nameof(AccountId))]
+    [Index(nameof(AccountId))]
     public class Account
     {
-        public required int AccountId { get; set; }
-        public required string FirstName { get; set; }
-        public required string LastName { get; set; }
+        [Required]
+        public int AccountId { get; set; }
+        [Required]
+        public string? FirstName { get; set; }
+        [Required]
+        public string? LastName { get; set; }
     }
 }

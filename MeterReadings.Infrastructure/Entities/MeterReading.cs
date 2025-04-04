@@ -1,15 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MeterReadings.Infrastructure.Entities
 {
     [PrimaryKey(nameof(MeterReadingId))]
+    [Index(nameof(AccountId))]
     public class MeterReading
     {
-        public required int MeterReadingId { get; set; }
-        [ForeignKey(nameof(Account.AccountId))]
-        public required Account Account { get; set; }
-        public required DateTime MeterReadingDateTime { get; set; }
-        public required int MeterReadValue { get; set; }
+        [Required]
+        public int MeterReadingId { get; set; }
+        [Required]
+        [ForeignKey(nameof(Account))]
+        public int AccountId { get; set; }
+        public virtual Account? Account { get; set; }
+        [Required]
+        public DateTime MeterReadingDateTime { get; set; }
+        [Required]
+        [MaxLength(5)]
+        public string? MeterReadValue { get; set; }
     }
 }

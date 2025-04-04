@@ -13,7 +13,7 @@ namespace MeterReadings.Infrastructure.Repositories
 
         public async Task InsertAccounts(ImmutableList<Account> accounts, CancellationToken cancellationToken = default)
         {
-            await _context.AddRangeAsync(accounts, cancellationToken);
+            await _context.Accounts.AddRangeAsync(accounts, cancellationToken);
         }
     }
 }

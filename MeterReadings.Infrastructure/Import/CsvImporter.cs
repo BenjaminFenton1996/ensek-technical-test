@@ -1,4 +1,5 @@
 ﻿using CsvHelper;
+using MeterReadings.Infrastructure.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
 using System.Globalization;
@@ -7,16 +8,14 @@ namespace MeterReadings.Infrastructure.Import
 {
     public class CsvImporter
     {
-        private readonly ImmutableList<ICsvHandler> _csvHandlers;
         private readonly ILogger<CsvImporter> _logger;
 
-        public CsvImporter(IEnumerable<ICsvHandler> csvHandlers, ILogger<CsvImporter> logger)
+        public CsvImporter(ILogger<CsvImporter> logger)
         {
-            _csvHandlers = [.. csvHandlers];
             _logger = logger;
         }
 
-        public async Task<ImportResult> ImportFromStreamAsync(Stream csvStream, CancellationToken cancellationToken = default)
+        public async Task<ImportResult> ImportFromStreamAsync(Stream csvStream, ICsvHandler csvHandler, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Starting import");
             ArgumentNullException.ThrowIfNull(csvStream);
@@ -36,27 +35,23 @@ namespace MeterReadings.Infrastructure.Import
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading CSV header");
-                throw new Exception("Failed to read CSV header");
+                throw new CsvHeaderException("Failed to read CSV header");
             }
 
             if (csvReader.HeaderRecord is null)
             {
                 _logger.LogError("CSV file is empty or missing headers");
-                throw new NotSupportedException("CSV file is empty or is header record is null");
+                throw new CsvHeaderException("CSV file is empty or header record is null");
             }
 
             var headers = csvReader.HeaderRecord.ToImmutableArray();
-            foreach (var csvHandler in _csvHandlers)
+            if (csvHandler.CanParse(headers))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (csvHandler.CanParse(headers))
-                {
-                    var importResults = await csvHandler.ImportAsync(csvReader, cancellationToken);
-                    return importResults;
-                }
+                var importResults = await csvHandler.ImportAsync(csvReader, cancellationToken);
+                return importResults;
             }
 
-            throw new NotSupportedException("Header format not supported");
+            throw new CsvHeaderException("Header format not supported");
         }
     }
 }

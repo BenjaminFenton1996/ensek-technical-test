@@ -1,18 +1,35 @@
 ﻿using CsvHelper;
+using System.Globalization;
 
 namespace MeterReadings.Infrastructure.Import.MeterReadings
 {
     internal static class MeterReadingsCsvRowParser
     {
-        public static (MeterReadingCsvRow? meterReadingCsvRow, string? errorMessage) ParseRow(IReaderRow csvRow)
+        public static MeterReadingImportRow? ParseRow(IReaderRow csvRow)
         {
-            var isValidAccountId = int.TryParse(csvRow.GetField<string>(MeterReadingsCsvValidColumns.AccountIdHeader), out var accountId);
+            var accountIdField = csvRow.GetField<string>(MeterReadingsCsvValidColumns.AccountIdHeader);
+            var isValidAccountId = int.TryParse(accountIdField, out var accountId);
+
+            var meterReadingDateTimeField = csvRow.GetField<string>(MeterReadingsCsvValidColumns.MeterReadingDateTimeHeader);
+            var isValidMeterReadingDateTime = DateTimeOffset.TryParseExact(meterReadingDateTimeField, "dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var meterReadingDateTime);
+
+            var meterReadValueHeader = csvRow.GetField<string>(MeterReadingsCsvValidColumns.MeterReadValueHeader);
+            var isValidmeterReadValue = int.TryParse(meterReadValueHeader, out var meterReadValue);
+
             if (!isValidAccountId)
             {
-                return (null, "Account ID is invalid or missing");
+                return null;
+            }
+            else if (!isValidMeterReadingDateTime)
+            {
+                return null;
+            }
+            else if (!isValidmeterReadValue)
+            {
+                return null;
             }
 
-            throw new NotImplementedException();
+            return new MeterReadingImportRow(accountId, meterReadingDateTime.UtcDateTime, meterReadValue.ToString("D5"));
         }
     }
 }
