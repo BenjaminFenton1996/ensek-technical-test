@@ -1,6 +1,5 @@
 using MeterReadings.API.DTOs;
 using MeterReadings.API.Services;
-using MeterReadings.Infrastructure;
 using MeterReadings.Infrastructure.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
