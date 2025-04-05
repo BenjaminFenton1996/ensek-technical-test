@@ -11,13 +11,11 @@ namespace MeterReadings.API.Controllers
     public class MeterReadingController : ControllerBase
     {
         private readonly UploadMeterReadingsHandler _uploadMeterReadingsHandler;
-        private readonly EnergyCompanyDbContext _context;
         private readonly ILogger<MeterReadingController> _logger;
 
-        public MeterReadingController(UploadMeterReadingsHandler uploadMeterReadingsHandler, EnergyCompanyDbContext context, ILogger<MeterReadingController> logger)
+        public MeterReadingController(UploadMeterReadingsHandler uploadMeterReadingsHandler, ILogger<MeterReadingController> logger)
         {
             _uploadMeterReadingsHandler = uploadMeterReadingsHandler;
-            _context = context;
             _logger = logger;
         }
 
@@ -37,21 +35,7 @@ namespace MeterReadings.API.Controllers
 
             try
             {
-                using var stream = csvFile.OpenReadStream();
-                var importResults = await _uploadMeterReadingsHandler.HandleAsync(stream, cancellationToken);
-                if (importResults.SuccessfulRows > 0)
-                {
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException dbEx)
-                    {
-                        _logger.LogError(dbEx, "Failed to save meter readings to the db");
-                        return StatusCode(500, "Something went wrong while importing the CSV data");
-                    }
-                }
-
+                var importResults = await _uploadMeterReadingsHandler.HandleAsync(csvFile, cancellationToken);
                 var response = new UploadMeterReadingsResponse(importResults.SuccessfulRows, importResults.FailedRows);
                 return Ok(response);
             }
@@ -60,6 +44,10 @@ namespace MeterReadings.API.Controllers
                 if (ex is CsvHeaderException)
                 {
                     return BadRequest("CSV headers were null or invalid");
+                }
+                if(ex is DbUpdateException)
+                {
+                    return StatusCode(500, "Something went wrong while importing the CSV data");
                 }
 
                 _logger.LogError(ex, "An error occurred while importing the CSV data");
