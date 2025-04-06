@@ -17,4 +17,9 @@
     <ProjectReference Include="..\MeterReadings.Infrastructure\MeterReadings.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MeterReadings.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
 </Project>

@@ -21,7 +21,7 @@ namespace MeterReadings.Tests.IntegrationTests
         private EnergyCompanyDbContext _context;
 
         [OneTimeSetUp]
-        public async Task Setup()
+        public async Task OneTimeSetup()
         {
             //In a real production system we'd probably want to get the connection string from an env variable so that we can set it and run these integration tests in a CI/CD pipeline, but no need here
             var connectionString = "Server=localhost;Port=5432;User Id=postgres;Password=password;Database=test_energy_company_db;Include Error Detail=true;";

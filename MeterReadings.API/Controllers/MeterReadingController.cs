@@ -9,10 +9,10 @@ namespace MeterReadings.API.Controllers
     [ApiController]
     public class MeterReadingController : ControllerBase
     {
-        private readonly UploadMeterReadingsService _uploadMeterReadingsHandler;
+        private readonly IUploadMeterReadingsService _uploadMeterReadingsHandler;
         private readonly ILogger<MeterReadingController> _logger;
 
-        public MeterReadingController(UploadMeterReadingsService uploadMeterReadingsHandler, ILogger<MeterReadingController> logger)
+        public MeterReadingController(IUploadMeterReadingsService uploadMeterReadingsHandler, ILogger<MeterReadingController> logger)
         {
             _uploadMeterReadingsHandler = uploadMeterReadingsHandler;
             _logger = logger;

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MeterReadings.API.Services
 {
-    public class UploadMeterReadingsService
+    public class UploadMeterReadingsService : IUploadMeterReadingsService
     {
         private readonly CsvImporter _csvImporter;
         private readonly ILogger<UploadMeterReadingsService> _logger;
