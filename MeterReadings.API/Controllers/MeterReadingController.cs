@@ -9,10 +9,10 @@ namespace MeterReadings.API.Controllers
     [ApiController]
     public class MeterReadingController : ControllerBase
     {
-        private readonly IUploadMeterReadingsService _uploadMeterReadingsHandler;
+        private readonly IImportMeterReadingsService _uploadMeterReadingsHandler;
         private readonly ILogger<MeterReadingController> _logger;
 
-        public MeterReadingController(IUploadMeterReadingsService uploadMeterReadingsHandler, ILogger<MeterReadingController> logger)
+        public MeterReadingController(IImportMeterReadingsService uploadMeterReadingsHandler, ILogger<MeterReadingController> logger)
         {
             _uploadMeterReadingsHandler = uploadMeterReadingsHandler;
             _logger = logger;
@@ -34,8 +34,7 @@ namespace MeterReadings.API.Controllers
 
             try
             {
-                var importResults = await _uploadMeterReadingsHandler.HandleAsync(csvFile, cancellationToken);
-                var response = new UploadMeterReadingsResponse(importResults.SuccessfulRows, importResults.FailedRows);
+                var response = await _uploadMeterReadingsHandler.HandleImportAsync(csvFile, cancellationToken);
                 return Ok(response);
             }
             catch (Exception ex)

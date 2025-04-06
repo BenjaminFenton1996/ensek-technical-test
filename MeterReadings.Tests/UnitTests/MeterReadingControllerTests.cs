@@ -1,4 +1,5 @@
 ﻿using MeterReadings.API.Controllers;
+using MeterReadings.API.DTOs;
 using MeterReadings.API.Services;
 using MeterReadings.Infrastructure.Import;
 using Microsoft.AspNetCore.Http;
@@ -17,10 +18,10 @@ namespace MeterReadings.Tests.UnitTests
         [OneTimeSetUp]
         public void OneTimeSetup()
         {
-            var uploadMeterReadingServiceMock = new Mock<IUploadMeterReadingsService>();
+            var uploadMeterReadingServiceMock = new Mock<IImportMeterReadingsService>();
             uploadMeterReadingServiceMock
-                .Setup(x => x.HandleAsync(It.IsAny<IFormFile>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ImportResult(1, 0));
+                .Setup(x => x.HandleImportAsync(It.IsAny<IFormFile>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ImportMeterReadingsResponse(1, 0));
 
             var loggerMock = new Mock<ILogger<MeterReadingController>>();
             _meterReadingController = new MeterReadingController(uploadMeterReadingServiceMock.Object, loggerMock.Object);

@@ -26,7 +26,7 @@ namespace MeterReadings.API
                 throw new InvalidOperationException("Database connection string was not found or was empty in configuration");
             }
             builder.Services.RegisterInfrastructure(connectionString);
-            builder.Services.AddScoped<IUploadMeterReadingsService, UploadMeterReadingsService>();
+            builder.Services.AddScoped<IImportMeterReadingsService, ImportMeterReadingsService>();
 
             var app = builder.Build();
             using (var scope = app.Services.CreateScope())
