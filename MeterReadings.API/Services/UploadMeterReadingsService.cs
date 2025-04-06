@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MeterReadings.API.Services
 {
-    public class UploadMeterReadingsHandler
+    public class UploadMeterReadingsService
     {
         private readonly CsvImporter _csvImporter;
-        private readonly ILogger<UploadMeterReadingsHandler> _logger;
+        private readonly ILogger<UploadMeterReadingsService> _logger;
         private readonly EnergyCompanyDbContext _context;
         private readonly MeterReadingsCsvHandler _csvHandler;
 
-        public UploadMeterReadingsHandler(CsvImporter csvImporter, MeterReadingsCsvHandler csvHandler, EnergyCompanyDbContext context, ILogger<UploadMeterReadingsHandler> logger)
+        public UploadMeterReadingsService(CsvImporter csvImporter, MeterReadingsCsvHandler csvHandler, EnergyCompanyDbContext context, ILogger<UploadMeterReadingsService> logger)
         {
             _csvImporter = csvImporter;
             _csvHandler = csvHandler;
@@ -28,7 +28,7 @@ namespace MeterReadings.API.Services
             {
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(cancellation);
                 }
                 catch (DbUpdateException dbEx)
                 {

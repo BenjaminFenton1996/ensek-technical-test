@@ -50,7 +50,7 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
                 {
                     if (!existingAccountIds.Contains(row.AccountId))
                     {
-                        _logger.LogWarning($"Account ID for meter reading does not exist: {row.AccountId}");
+                        _logger.LogWarning("Account ID for meter reading does not exist: {accountId}", row.AccountId);
                         continue;
                     }
 
