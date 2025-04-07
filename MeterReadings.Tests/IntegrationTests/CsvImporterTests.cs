@@ -74,8 +74,8 @@ namespace MeterReadings.Tests.IntegrationTests
 
             var actualImportAccountResults = await _csvImporter.ImportFromStreamAsync(accountsStream, _accountsCsvHandler, 100).ToListAsync();
             var actualImportAccountResultsBatch = actualImportAccountResults.FirstOrDefault();
-            //var expectedImportAccountResultsBatch = new ImportBatchResult(100, 0, false);
-            //Assert.That(actualImportAccountResultsBatch, Is.EqualTo(expectedImportAccountResultsBatch));
+            var expectedImportAccountResultsBatch = new ImportBatchResult(100, 0, false);
+            Assert.That(actualImportAccountResultsBatch, Is.EqualTo(expectedImportAccountResultsBatch));
 
             await _context.SaveChangesAsync();
             var accounts = _context.Accounts.ToArray();
