@@ -12,11 +12,21 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
         private readonly IMeterReadingsRepository _meterReadingsRepository;
         private readonly EnergyCompanyDbContext _context;
         private readonly ILogger<MeterReadingsCsvHandler> _logger;
+        private readonly HashSet<int> _existingAccountIds = [];
         public MeterReadingsCsvHandler(IMeterReadingsRepository neterReadingsRepository, EnergyCompanyDbContext context, ILogger<MeterReadingsCsvHandler> logger)
         {
             _meterReadingsRepository = neterReadingsRepository;
             _context = context;
             _logger = logger;
+
+            try
+            {
+                _existingAccountIds = [.. _context.Accounts.Select(x => x.AccountId)];
+            }
+            catch (DbException ex)
+            {
+                _logger.LogError(ex, "Failed to get existing account IDs");
+            }
         }
 
         public bool CanParse(ImmutableArray<string> headers)
@@ -30,16 +40,6 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
 
         public async Task<ImportBatchResult> ImportAsync(CsvReader csv, int batchSize, CancellationToken cancellationToken = default)
         {
-            var existingAccountIds = new HashSet<int>();
-            try
-            {
-                existingAccountIds = [.. _context.Accounts.Select(x => x.AccountId)];
-            }
-            catch (DbException ex)
-            {
-                _logger.LogError(ex, "Failed to get existing account IDs");
-            }
-
             var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<MeterReadingImportRow>.ReadCsvAsync(csv, batchSize, MeterReadingsCsvRowParser.ParseRow);
             var meterReadings = new List<MeterReading>();
             try
@@ -48,7 +48,7 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
                 var existingReadingsLookup = existingReadings.ToLookup(x => x.AccountId);
                 foreach (var row in parsedRows)
                 {
-                    if (!existingAccountIds.Contains(row.AccountId))
+                    if (!_existingAccountIds.Contains(row.AccountId))
                     {
                         _logger.LogWarning("Account ID for meter reading does not exist: {accountId}", row.AccountId);
                         continue;
