@@ -19,7 +19,7 @@ namespace MeterReadings.Tests.UnitTests
             await csvReader.ReadAsync();
             csvReader.ReadHeader();
 
-            var (parsedRows, totalRows) = await CsvImportParser<AccountImportRow>.ReadCsvAsync(csvReader, AccountsCsvRowParser.ParseRow);
+            var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<AccountImportRow>.ReadCsvAsync(csvReader, 100, AccountsCsvRowParser.ParseRow);
             var expectedRow = new AccountImportRow(2344, "Tommy", "Test");
 
             Assert.Multiple(() =>
@@ -41,7 +41,7 @@ namespace MeterReadings.Tests.UnitTests
             await csvReader.ReadAsync();
             csvReader.ReadHeader();
 
-            var (parsedRows, totalRows) = await CsvImportParser<AccountImportRow>.ReadCsvAsync(csvReader, AccountsCsvRowParser.ParseRow);
+            var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<AccountImportRow>.ReadCsvAsync(csvReader, 100, AccountsCsvRowParser.ParseRow);
             var expectedRow = new AccountImportRow(2233, "Barry", "Test");
 
             Assert.Multiple(() =>
@@ -63,7 +63,7 @@ namespace MeterReadings.Tests.UnitTests
             await csvReader.ReadAsync();
             csvReader.ReadHeader();
 
-            var (parsedRows, totalRows) = await CsvImportParser<AccountImportRow>.ReadCsvAsync(csvReader, AccountsCsvRowParser.ParseRow);
+            var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<AccountImportRow>.ReadCsvAsync(csvReader, 100, AccountsCsvRowParser.ParseRow);
             var expectedRow = new AccountImportRow(2344, "Tommy", "Test");
 
             Assert.Multiple(() =>

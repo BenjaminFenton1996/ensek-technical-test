@@ -8,12 +8,12 @@ namespace MeterReadings.API.Services
 {
     public class ImportMeterReadingsService : IImportMeterReadingsService
     {
-        private readonly CsvImporter _csvImporter;
+        private readonly CsvBatchImporter _csvImporter;
         private readonly ILogger<ImportMeterReadingsService> _logger;
         private readonly EnergyCompanyDbContext _context;
         private readonly MeterReadingsCsvHandler _csvHandler;
 
-        public ImportMeterReadingsService(CsvImporter csvImporter, MeterReadingsCsvHandler csvHandler, EnergyCompanyDbContext context, ILogger<ImportMeterReadingsService> logger)
+        public ImportMeterReadingsService(CsvBatchImporter csvImporter, MeterReadingsCsvHandler csvHandler, EnergyCompanyDbContext context, ILogger<ImportMeterReadingsService> logger)
         {
             _csvImporter = csvImporter;
             _csvHandler = csvHandler;
@@ -21,23 +21,31 @@ namespace MeterReadings.API.Services
             _logger = logger;
         }
 
-        public async Task<ImportMeterReadingsResponse> HandleImportAsync(IFormFile csvFile, CancellationToken cancellation)
+        public async Task<ImportMeterReadingsResponse> HandleImportAsync(IFormFile csvFile, CancellationToken cancellationToken)
         {
             using var meterReadingsStream = csvFile.OpenReadStream();
-            var importResults = await _csvImporter.ImportFromStreamAsync(meterReadingsStream, _csvHandler, cancellation);
-            if (importResults.SuccessfulRows > 0)
+
+            var totalSuccessfulRows = 0;
+            var totalFailedRows = 0;
+            await foreach (var importBatch in _csvImporter.ImportFromStreamAsync(meterReadingsStream, _csvHandler, 100, cancellationToken))
             {
-                try
+                totalSuccessfulRows += importBatch.SuccessfulRows;
+                totalFailedRows += importBatch.FailedRows;
+                if (importBatch.SuccessfulRows > 0)
                 {
-                    await _context.SaveChangesAsync(cancellation);
-                }
-                catch (DbUpdateException dbEx)
-                {
-                    _logger.LogError(dbEx, "Failed to save meter readings to the db");
-                    throw;
+                    try
+                    {
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+                    catch (DbUpdateException dbEx)
+                    {
+                        _logger.LogError(dbEx, "Failed to save meter readings to the db");
+                        throw;
+                    }
                 }
             }
-            return new ImportMeterReadingsResponse(importResults.SuccessfulRows, importResults.FailedRows);
+
+            return new ImportMeterReadingsResponse(totalSuccessfulRows, totalFailedRows);
         }
     }
 }

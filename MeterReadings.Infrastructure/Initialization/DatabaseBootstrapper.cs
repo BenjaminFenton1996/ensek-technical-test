@@ -8,11 +8,11 @@ namespace MeterReadings.Infrastructure.Initialization
     public class DatabaseBootstrapper
     {
         private readonly EnergyCompanyDbContext _context;
-        private readonly CsvImporter _csvImporter;
+        private readonly CsvBatchImporter _csvImporter;
         private readonly AccountsCsvHandler _accountsCsvHandler;
         private readonly ILogger<DatabaseBootstrapper> _logger;
 
-        public DatabaseBootstrapper(EnergyCompanyDbContext context, CsvImporter csvImporter, AccountsCsvHandler accountsCsvHandler, ILogger<DatabaseBootstrapper> logger)
+        public DatabaseBootstrapper(EnergyCompanyDbContext context, CsvBatchImporter csvImporter, AccountsCsvHandler accountsCsvHandler, ILogger<DatabaseBootstrapper> logger)
         {
             _context = context;
             _csvImporter = csvImporter;
@@ -34,8 +34,10 @@ namespace MeterReadings.Infrastructure.Initialization
                     try
                     {
                         using var csvFileStream = new FileStream(testAccountsPath, FileMode.Open, FileAccess.Read);
-                        await _csvImporter.ImportFromStreamAsync(csvFileStream, _accountsCsvHandler, cancellationToken);
-                        _logger.LogInformation("Finished account seeding");
+                        await foreach (var importBatch in _csvImporter.ImportFromStreamAsync(csvFileStream, _accountsCsvHandler, 100, cancellationToken))
+                        {
+                            _logger.LogInformation("Finished seeding account batch");
+                        }
                     }
                     catch (Exception ex)
                     {

@@ -17,7 +17,7 @@ namespace MeterReadings.Infrastructure
             services.AddScoped<IAccountsRepository, AccountsRepository>();
             services.AddScoped<AccountsCsvHandler>();
             services.AddScoped<MeterReadingsCsvHandler>();
-            services.AddScoped<CsvImporter>();
+            services.AddScoped<CsvBatchImporter>();
             services.AddScoped<DatabaseBootstrapper>();
         }
     }

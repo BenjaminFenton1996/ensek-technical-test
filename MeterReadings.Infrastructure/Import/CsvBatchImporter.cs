@@ -3,19 +3,20 @@ using MeterReadings.Infrastructure.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace MeterReadings.Infrastructure.Import
 {
-    public class CsvImporter
+    public class CsvBatchImporter
     {
-        private readonly ILogger<CsvImporter> _logger;
+        private readonly ILogger<CsvBatchImporter> _logger;
 
-        public CsvImporter(ILogger<CsvImporter> logger)
+        public CsvBatchImporter(ILogger<CsvBatchImporter> logger)
         {
             _logger = logger;
         }
 
-        public async Task<ImportResult> ImportFromStreamAsync(Stream csvStream, ICsvHandler csvHandler, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<ImportBatchResult> ImportFromStreamAsync(Stream csvStream, ICsvHandler csvHandler, int batchSize, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Starting import");
             ArgumentNullException.ThrowIfNull(csvStream);
@@ -45,13 +46,29 @@ namespace MeterReadings.Infrastructure.Import
             }
 
             var headers = csvReader.HeaderRecord.ToImmutableArray();
-            if (csvHandler.CanParse(headers))
+            if (!csvHandler.CanParse(headers))
             {
-                var importResults = await csvHandler.ImportAsync(csvReader, cancellationToken);
-                return importResults;
+                _logger.LogError("CSV header format is not supported");
+                throw new CsvHeaderException("Header format not supported");
             }
 
-            throw new CsvHeaderException("Header format not supported");
+            _logger.LogInformation("Starting import batch loop");
+            while (true)
+            {
+                var importBatch = await csvHandler.ImportAsync(csvReader, batchSize, cancellationToken);
+                if (importBatch == null || importBatch.SuccessfulRows == 0 && importBatch.FailedRows == 0)
+                {
+                    _logger.LogInformation("ImportAsync returned no processed rows, assuming end of data");
+                    break;
+                }
+
+                yield return importBatch;
+                if (importBatch.IsLastBatch)
+                {
+                    _logger.LogInformation("IsLastBatch flag is true, ending import batch loop");
+                    break;
+                }
+            }
         }
     }
 }

@@ -28,7 +28,7 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
             return false;
         }
 
-        public async Task<ImportResult> ImportAsync(CsvReader csv, CancellationToken cancellationToken = default)
+        public async Task<ImportBatchResult> ImportAsync(CsvReader csv, int batchSize, CancellationToken cancellationToken = default)
         {
             var existingAccountIds = new HashSet<int>();
             try
@@ -40,7 +40,7 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
                 _logger.LogError(ex, "Failed to get existing account IDs");
             }
 
-            var (parsedRows, totalRows) = await CsvImportParser<MeterReadingImportRow>.ReadCsvAsync(csv, MeterReadingsCsvRowParser.ParseRow);
+            var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<MeterReadingImportRow>.ReadCsvAsync(csv, batchSize, MeterReadingsCsvRowParser.ParseRow);
             var meterReadings = new List<MeterReading>();
             try
             {
@@ -68,12 +68,15 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
                     }
 
                     var existingAccountReadings = existingReadingsLookup[meterReading.AccountId];
-                    if (existingAccountReadings != null && existingAccountReadings.Any(x => x.MeterReadValue == meterReading.MeterReadValue && x.MeterReadingDateTime == meterReading.MeterReadingDateTime))
+                    var identicalReadingExists = existingAccountReadings.Any(x => x.MeterReadValue == meterReading.MeterReadValue && x.MeterReadingDateTime == meterReading.MeterReadingDateTime);
+                    if (existingAccountReadings != null && identicalReadingExists)
                     {
                         _logger.LogWarning("Meter reading is identical to an existing reading");
                         continue;
                     }
-                    if (existingAccountReadings != null && existingAccountReadings.Any(x => x.MeterReadingDateTime >= meterReading.MeterReadingDateTime))
+
+                    var meterReadingIsOutdated = existingAccountReadings?.Any(x => x.MeterReadingDateTime >= meterReading.MeterReadingDateTime) ?? false;
+                    if (existingAccountReadings != null && meterReadingIsOutdated)
                     {
                         _logger.LogWarning("Meter reading is older than an existing reading");
                         continue;
@@ -92,7 +95,7 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
             if (meterReadings.Count == 0)
             {
                 _logger.LogWarning("CSV contained no valid rows");
-                return new ImportResult(0, totalRows);
+                return new ImportBatchResult(0, totalRows, isLastBatch);
             }
 
             try
@@ -102,9 +105,9 @@ namespace MeterReadings.Infrastructure.Import.MeterReadings
             catch (Exception dbEx)
             {
                 _logger.LogError(dbEx, "Database error during batch insert of meter readings");
-                return new ImportResult(0, totalRows);
+                return new ImportBatchResult(0, totalRows, isLastBatch);
             }
-            return new ImportResult(successfulRows, failedRows);
+            return new ImportBatchResult(successfulRows, failedRows, isLastBatch);
         }
     }
 }

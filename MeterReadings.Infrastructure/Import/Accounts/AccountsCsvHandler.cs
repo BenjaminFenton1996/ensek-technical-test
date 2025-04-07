@@ -30,9 +30,9 @@ namespace MeterReadings.Infrastructure.Import.Accounts
             return false;
         }
 
-        public async Task<ImportResult> ImportAsync(CsvReader csv, CancellationToken cancellationToken = default)
+        public async Task<ImportBatchResult> ImportAsync(CsvReader csv, int batchSize, CancellationToken cancellationToken = default)
         {
-            var (parsedRows, totalRows) = await CsvImportParser<AccountImportRow>.ReadCsvAsync(csv, AccountsCsvRowParser.ParseRow);
+            var (parsedRows, totalRows, isLastBatch) = await CsvImportBatchParser<AccountImportRow>.ReadCsvAsync(csv, batchSize, AccountsCsvRowParser.ParseRow);
             var accounts = new List<Account>();
             foreach (var row in parsedRows)
             {
@@ -57,7 +57,7 @@ namespace MeterReadings.Infrastructure.Import.Accounts
             if (accounts.Count == 0)
             {
                 _logger.LogWarning("CSV contained no valid rows");
-                return new ImportResult(0, totalRows);
+                return new ImportBatchResult(0, totalRows, isLastBatch);
             }
 
             try
@@ -67,9 +67,9 @@ namespace MeterReadings.Infrastructure.Import.Accounts
             catch (Exception dbEx)
             {
                 _logger.LogError(dbEx, "Database error during batch insert of accounts");
-                return new ImportResult(0, totalRows);
+                return new ImportBatchResult(0, totalRows, isLastBatch);
             }
-            return new ImportResult(successfulRows, failedRows);
+            return new ImportBatchResult(successfulRows, failedRows, isLastBatch);
         }
     }
 }
